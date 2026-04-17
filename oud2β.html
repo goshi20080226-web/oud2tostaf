@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>運用・行路表 自動生成システム (Web2.0 Style)</title>
+    <style>
+        /* 2000年代後半風（Web 2.0 / Vista風）システムUI */
+        body { 
+            font-family: "ＭＳ Ｐゴシック", "MS PGothic", "Tahoma", sans-serif; 
+            background-color: #d4d0c8; 
+            background-image: linear-gradient(to bottom, #ece9d8, #d4d0c8);
+            background-attachment: fixed;
+            margin: 15px; 
+            color: #222; 
+            line-height: 1.3; 
+        }
+        
+        .config-box { 
+            background: linear-gradient(to bottom, #ffffff, #eaf0f8); 
+            padding: 15px; 
+            border: 1px solid #7a96df; 
+            border-radius: 4px; 
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2); 
+            margin-bottom: 20px; 
+        }
+        
+        .config-header { 
+            background: linear-gradient(to bottom, #629bd5 0%, #376ea6 50%, #2a5a9b 51%, #1d467c 100%); 
+            color: #fff; 
+            padding: 6px 12px; 
+            margin: -15px -15px 15px -15px; 
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-bottom: 1px solid #0f2545; 
+            box-shadow: inset 0 1px 1px rgba(255,255,255,0.4);
+        }
+        .config-header h2 { 
+            margin: 0; 
+            font-size: 16px; 
+            font-weight: bold; 
+            text-shadow: 1px 1px 1px #000; 
+        }
+        
+        #realtime-clock { 
+            font-size: 18px; 
+            font-family: "Consolas", "Courier New", monospace; 
+            background: #fff; 
+            color: #111; 
+            padding: 2px 8px; 
+            border: 2px inset #ccc; 
+            letter-spacing: 1px; 
+            box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .file-inputs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .file-field { 
+            background: #fdfdfd; 
+            padding: 10px; 
+            border: 1px solid #b5b5b5; 
+            border-radius: 3px;
+            box-shadow: inset 1px 1px 2px #eee;
+        }
+        .file-field.data-manage { background: #ffffe0; border-color: #d6ca55; }
+
+        .share-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #FFFFE0;
+            border: 1px solid #E6DB55;
+            padding: 8px 12px;
+            margin-top: 10px;
+            font-size: 13px;
+            border-radius: 3px;
+        }
+        .share-box input {
+            flex: 1;
+            border: 1px inset #ccc;
+            padding: 4px;
+            font-family: "Consolas", monospace;
+            background: #fff;
+        }
+
+        .controls { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-top: 15px; 
+            background: linear-gradient(to bottom, #f7f7f7, #e2e2e2); 
+            padding: 8px; 
+            border: 1px solid #ccc; 
+            border-radius: 3px;
+        }
+        select, input[type="file"] { font-size: 12px; padding: 2px; border: 1px inset #aaa; background: #fff; }
+
+        button { 
+            font-family: "ＭＳ Ｐゴシック", sans-serif; 
+            font-size: 13px; 
+            padding: 4px 12px; 
+            border: 1px solid #777; 
+            border-radius: 3px;
+            background: linear-gradient(to bottom, #f5f5f5 0%, #e0e0e0 50%, #cccccc 51%, #dddddd 100%); 
+            color: #222; 
+            cursor: pointer; 
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        button:hover { 
+            background: linear-gradient(to bottom, #eaf4ff 0%, #c4def7 50%, #a6cbf0 51%, #cde5ff 100%); 
+            border-color: #3c7fb1; 
+        }
+        button:active { 
+            background: #b0b0b0; 
+            box-shadow: inset 2px 2px 3px rgba(0,0,0,0.3); 
+        }
+
+        .reset-btn { margin-left: auto; }
+        .delete-btn { width: 100%; margin-top: 8px; font-size: 11px; }
+
+        #log-area { 
+            font-family: "ＭＳ ゴシック", monospace; 
+            font-size: 12px; 
+            color: #333; 
+            margin-top: 10px; 
+            background: #fff; 
+            padding: 6px; 
+            border: 2px inset #ccc; 
+            height: 80px; 
+            overflow-y: scroll; 
+        }
+
+        .unyo-sheet { background: #fff; width: 100%; max-width: 1250px; margin: 0 auto; border: 2px outset #ddd; padding: 15px; box-sizing: border-box; }
+        .sheet-title { font-size: 22px; font-weight: bold; text-align: left; border-bottom: 3px double #333; padding-bottom: 4px; margin-bottom: 15px; color: #111; }
+        .trains-container { display: flex; flex-wrap: wrap; gap: 15px; justify-content: flex-start; }
+        
+        /* ▼▼ スタフ専用の縦長フォーマット最適化 ▼▼ */
+        .train-block { 
+            flex: 0 0 360px; /* スマホや実際のスタフに近いスリムな横幅 */
+            border: 2px solid #222; 
+            background: #fff; 
+            box-shadow: 2px 2px 6px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .train-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px 12px;
+            background: #fff; /* 白背景でスッキリ */
+        }
+        .train-no { 
+            font-size: 26px; 
+            font-weight: bold; 
+            color: #000; 
+            font-family: "Arial", "ＭＳ ゴシック", sans-serif; 
+            letter-spacing: 1px;
+        }
+        .syubetsu-box { 
+            font-size: 15px; 
+            font-weight: bold; 
+            border: 2px solid; 
+            border-radius: 4px;
+            padding: 2px 8px; 
+            background: #fff; 
+        }
+        .route-info { 
+            font-size: 14px; 
+            color: #111; 
+            background: #f0f0f0; 
+            padding: 5px 8px; 
+            border-top: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+            border-left: 6px solid #444; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .route-dest { font-weight: bold; }
+        .route-cars { font-size: 12px; font-weight: bold; color: #333; }
+
+        /* スタフ用テーブルスタイル */
+        table.staf-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .staf-table th { 
+            font-size: 11px; 
+            border: 1px solid #222; 
+            background: #eee; 
+            padding: 4px 2px; 
+            color: #111; 
+            font-weight: bold;
+        }
+        .staf-table td { border: 1px solid #222; padding: 1px; text-align: center; height: 34px; }
+        
+        .col-st { width: 34%; }
+        .col-track { width: 8%; } /* 番線列は狭く */
+        .col-time { width: 20%; }
+        .col-rem { width: 18%; }
+
+        .st-name { text-align: left; font-size: 13px; padding-left: 4px; overflow: hidden; white-space: nowrap; color: #000; font-weight: bold; }
+        
+        /* 番線列の背景を薄黄色に（画像再現） */
+        .track-val { font-size: 14px; font-family: "Arial", sans-serif; background: #fff9e6; font-weight: bold; }
+        .changed-track { color: #e60000 !important; font-weight: bold !important; } /* 変更時は赤太字 */
+
+        .time-wrap { display: flex; align-items: baseline; justify-content: center; font-family: "Arial", sans-serif; }
+        .time-h { font-size: 12px; margin-right: 1px; color: #000; } 
+        .time-m { font-size: 22px; font-weight: bold; letter-spacing: -1px; color: #000; }             
+        .time-s { font-size: 12px; margin-left: 1px; color: #333; font-weight: bold; }   
+        .pass-mark { color: #333; font-size: 18px; font-family: "ＭＳ ゴシック", monospace; font-weight: bold; }
+
+        .rem-val { text-align: left; font-size: 11px; padding: 2px; line-height: 1.1; color: #222; font-weight: bold; }
+        .rem-badge { display: inline-block; font-size: 9px; padding: 0 1px; border: 1px solid #000; margin-right: 2px; margin-bottom: 1px; background: #fff; border-radius: 2px; }
+
+        /* ▼▼ 指令通告関連 ▼▼ */
+        .notice-container {
+            display: flex;
+            align-items: center;
+            background: #FFFFFF;
+            border-bottom: 2px solid #222;
+            padding: 3px;
+        }
+        .notice-label {
+            background: #e60000;
+            color: #FFFFFF;
+            font-weight: bold;
+            padding: 1px 4px;
+            font-size: 11px;
+            margin-right: 4px;
+            border: 1px solid #800000;
+        }
+        .notice-val {
+            flex: 1;
+            font-family: "ＭＳ ゴシック", monospace;
+            font-size: 12px;
+            color: #cc0000;
+            font-weight: bold;
+            min-height: 14px;
+            padding-left: 4px;
+        }
+        .notice-val.editable { background: #FFFFE0; cursor: text; }
+        .notice-val.editable:empty:before { content: "(入力可：通告内容)"; color: #888; font-weight: normal; }
+        .notice-val:not(.editable):empty:before { content: "通告なし"; color: #000; font-weight: normal; }
+
+        .ack-btn {
+            background: linear-gradient(to bottom, #ffb3b3, #e60000);
+            border: 1px solid #990000;
+            color: #fff;
+            font-family: "ＭＳ Ｐゴシック", sans-serif;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-left: 8px;
+            box-shadow: inset 1px 1px 2px rgba(255,255,255,0.5), 1px 1px 2px rgba(0,0,0,0.3);
+            animation: blink 1s infinite alternate;
+        }
+        .ack-btn:hover { background: linear-gradient(to bottom, #ffcccc, #ff3333); }
+        .ack-btn:active { background: #cc0000; box-shadow: inset 2px 2px 3px rgba(0,0,0,0.4); animation: none; }
+
+        .ack-label-ok {
+            background: linear-gradient(to bottom, #e0f0e0, #a0c0a0);
+            color: #004400;
+            border: 1px solid #006600;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+            border-radius: 2px;
+            box-shadow: inset 1px 1px 1px #fff;
+        }
+        .ack-label-wait {
+            color: #e60000;
+            font-weight: bold;
+            font-size: 11px;
+            margin-left: 8px;
+            animation: blink 1s infinite alternate;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        .editable { cursor: text; transition: background 0.2s; }
+        .editable:hover { background: #eef6ff !important; outline: 1px dotted #3c7fb1; outline-offset: -1px; }
+        .editable:focus { background: #fff !important; outline: 2px solid #3c7fb1; outline-offset: -2px; }
+
+        @media print {
+            .config-box { display: none; }
+            body { background: #fff; margin: 0; }
+            .unyo-sheet { border: none; box-shadow: none; width: 100%; max-width: none; padding: 0; }
+            .train-block { border: 2px solid #000; margin-bottom: 10px; box-shadow: none; break-inside: avoid; }
+            .editable:hover, .editable:focus { outline: none; background: transparent !important; }
+            .ack-btn, .ack-label-wait, .ack-label-ok { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="config-box">
+    <div class="config-header">
+        <h2 style="display: flex; align-items: center; gap: 10px;">
+            システム設定 - 運用・行路表ジェネレータ 
+            <span id="mode-badge" style="font-size: 12px; font-weight: normal;">[乗務員モード]</span>
+        </h2>
+        <div id="realtime-clock">--:--:--</div>
+    </div>
+
+    <div id="file-input-area" class="file-inputs">
+        <div class="file-field">
+            <strong>[必須] ダイヤデータ (.oud2)</strong><br>
+            <input type="file" id="oudInput" accept=".oud2">
+        </div>
+        <div class="file-field">
+            <strong>[任意] 運用対応表 (.csv)</strong><br>
+            <input type="file" id="csvInput" accept=".csv">
+        </div>
+        <div class="file-field data-manage">
+            <strong>ストレージキャッシュ</strong><br>
+            <span style="font-size:11px; color:#555;">自動保存された復元データをクリアします。</span>
+            <button class="delete-btn" onclick="clearSavedFiles()">キャッシュデータを削除</button>
+        </div>
+    </div>
+
+    <div id="share-url-container" class="share-box" style="display:none;">
+        <span style="font-weight:bold; color:#000080;">乗務員用 URL:</span>
+        <input type="text" id="share-url-input" readonly>
+        <button onclick="copyShareUrl()">URLをコピー</button>
+    </div>
+
+    <div id="log-area">[SYSTEM] 待機中... ファイルをアップロードしてください。</div>
+    
+    <div id="ui-area" style="display:none;" class="controls">
+        <strong>対象仕業の選択:</strong> 
+        <select id="unyoSelect"></select>
+        <button class="print-btn" onclick="window.print()">帳票印刷プレビュー</button>
+        <button id="resetBtn" class="reset-btn" style="display:none;" onclick="clearOverrides()">手動入力の初期化</button>
+    </div>
+</div>
+
+<div id="output"></div>
+
+<script type="module">
+// --- 時計機能 ---
+function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('realtime-clock').textContent = `${h}:${m}:${s}`;
+}
+setInterval(updateClock, 1000);
+updateClock(); 
+
+// --- 音声再生機能（アラーム音） ---
+let audioCtx = null;
+let lastAlerted = {};
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}
+window.addEventListener('click', initAudio, { once: true });
+window.addEventListener('change', initAudio, { once: true });
+
+function playBeep() {
+    if (!audioCtx) return;
+    try {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        osc.frequency.setValueAtTime(1100, audioCtx.currentTime + 0.1); 
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+        osc.stop(audioCtx.currentTime + 0.3);
+    } catch(e) {}
+}
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC-m5mjg2aSDgTE2qyY6VVWtQyYSjjYERw",
+  authDomain: "oud2-to-staf.firebaseapp.com",
+  databaseURL: "https://oud2-to-staf-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "oud2-to-staf",
+  storageBucket: "oud2-to-staf.firebasestorage.app",
+  messagingSenderId: "184886010410",
+  appId: "1:184886010410:web:fff963026f4b9f2645d953",
+  measurementId: "G-6K5PH0YHPJ"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const urlParams = new URLSearchParams(window.location.search);
+const isShirei = urlParams.get('mode') === 'shirei';
+let currentRoomId = urlParams.get('room');
+
+if (isShirei) {
+    document.getElementById('mode-badge').textContent = "[指令：編集モード]";
+    document.getElementById('mode-badge').style.color = "#ffff00";
+    document.getElementById('resetBtn').style.display = "block";
+} else if (currentRoomId) {
+    document.getElementById('file-input-area').style.display = 'none';
+}
+
+let globalStations = []; 
+let trainTypes = [];
+let trainList = [];
+let csvMapping = {}; 
+let appOverrides = {}; 
+let listenersAttached = false;
+
+function attachFirebaseListeners() {
+    if (!currentRoomId || listenersAttached) return;
+    listenersAttached = true;
+
+    onValue(ref(db, `sessions/${currentRoomId}/baseData`), (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.oudText) {
+            document.getElementById('log-area').textContent = "";
+            addLog("[SYNC] クラウドサーバーからベースダイヤデータを受信しました。");
+            processData(data.oudText, data.csvText, true);
+        } else if (!isShirei) {
+            document.getElementById('log-area').textContent = "[SYSTEM] 指令からのデータアップロードを待機しています...";
+        }
+    });
+
+    onValue(ref(db, `sessions/${currentRoomId}/overrides`), (snapshot) => {
+        appOverrides = snapshot.val() || {};
+        let currentTarget = document.getElementById('unyoSelect').value;
+        if (currentTarget) {
+            renderAll(currentTarget);
+            addLog("[SYNC] 通告や変更データの更新を受信・同期しました。");
+        }
+    });
+}
+
+function addLog(msg) {
+    const area = document.getElementById('log-area');
+    area.textContent += msg + "\n";
+    area.scrollTop = area.scrollHeight;
+}
+
+function parseColor(c) {
+    let hex = (c || "0").padStart(8, '0');
+    return `#${hex.slice(6,8)}${hex.slice(4,6)}${hex.slice(2,4)}`;
+}
+
+function timeToSec(t) {
+    if (!t || t.trim() === '') return -1;
+    let h, m, s;
+    if (t.length <= 4) {
+        h = parseInt(t.slice(0, -2) || '0', 10);
+        m = parseInt(t.slice(-2), 10);
+        s = 0;
+    } else {
+        h = parseInt(t.slice(0, -4) || '0', 10);
+        m = parseInt(t.slice(-4, -2), 10);
+        s = parseInt(t.slice(-2), 10);
+    }
+    if (isNaN(h) || isNaN(m)) return -1;
+    return h * 3600 + m * 60 + s;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    if (currentRoomId) {
+        document.getElementById('log-area').textContent = "[SYSTEM] クラウドサーバーに接続中...";
+        attachFirebaseListeners();
+    } else {
+        const savedOudText = localStorage.getItem('savedOud2Text');
+        const savedCsvText = localStorage.getItem('savedCsvText');
+        if (savedOudText) {
+            document.getElementById('log-area').textContent = "";
+            addLog("[SYSTEM] ローカルストレージから前回のデータを復元しています...");
+            processData(savedOudText, savedCsvText, true);
+        }
+    }
+});
+
+async function handleFiles() {
+    const oudFile = document.getElementById('oudInput').files[0];
+    const csvFile = document.getElementById('csvInput').files[0];
+    if (!oudFile) return;
+
+    let oudText = await readFileAsText(oudFile, 'shift-jis');
+    let csvText = csvFile ? await readFileAsText(csvFile, 'shift-jis') : null;
+
+    if (isShirei) {
+        if (!currentRoomId) {
+            currentRoomId = Math.random().toString(36).substring(2, 8).toUpperCase();
+            window.history.pushState({}, '', `?mode=shirei&room=${currentRoomId}`);
+            attachFirebaseListeners(); 
+        }
+        
+        set(ref(db, `sessions/${currentRoomId}/baseData`), {
+            oudText: oudText,
+            csvText: csvText || ""
+        });
+
+        const shareUrl = window.location.origin + window.location.pathname + `?room=${currentRoomId}`;
+        document.getElementById('share-url-container').style.display = 'flex';
+        document.getElementById('share-url-input').value = shareUrl;
+        
+        addLog(`[SYSTEM] サーバーにデータをアップロードしました。共有URLを伝達してください。`);
+    } else {
+        processData(oudText, csvText, false);
+    }
+    
+    localStorage.setItem('savedOud2Text', oudText); 
+    if (csvText) localStorage.setItem('savedCsvText', csvText); 
+}
+
+document.getElementById('oudInput').addEventListener('change', handleFiles);
+document.getElementById('csvInput').addEventListener('change', handleFiles);
+
+window.copyShareUrl = function() {
+    const input = document.getElementById('share-url-input');
+    input.select();
+    document.execCommand('copy');
+    alert('乗務員用のURLをコピーしました！\nこのURLを運転士のタブレット等に送信してください。');
+}
+
+window.clearSavedFiles = function() {
+    if(confirm("ローカルストレージのキャッシュデータを削除しますか？\n※サーバー上の変更履歴は保持されます。")) {
+        localStorage.removeItem('savedOud2Text');
+        localStorage.removeItem('savedCsvText');
+        location.reload();
+    }
+}
+
+function readFileAsText(file, enc) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsText(file, enc);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+    });
+}
+
+function processData(oudText, csvText, isRestored) {
+    try {
+        if (csvText) parseCsvMapping(csvText);
+        else csvMapping = {};
+
+        parseOud2(oudText);
+        
+        let logMsg = `[INFO] 解析完了: 列車 ${trainList.length} 件を読み込みました。\n`;
+        logMsg += `[INFO] 【物理リンク】同じ番線での折り返し、留置線ルールの適用完了。\n`;
+        logMsg += `[INFO] 【運番・両数伝播】出庫列車のデータを全列車に割り当てました。\n`;
+        
+        addLog(logMsg);
+        setupUnyoFilter();
+        document.getElementById('ui-area').style.display = 'flex';
+    } catch (e) {
+        addLog("[ERROR] " + e.message);
+    }
+}
+
+function parseCsvMapping(text) {
+    const lines = text.split(/\r?\n/);
+    csvMapping = {};
+    let trainNoRow = -1, unyoNoRow = -1, carsRow = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+        let cols = lines[i].split(',');
+        if (cols.length === 0) continue;
+        let header = (cols[0] || "") + (cols[1] || ""); 
+        if (header.includes('列番') || header.includes('列車番号')) trainNoRow = i;
+        if (header.includes('運用') || header.includes('仕業') || header.includes('運番')) unyoNoRow = i;
+        if (header.includes('両数指定') || header.includes('両数') || header.includes('編成')) carsRow = i;
+    }
+
+    if (trainNoRow === -1) trainNoRow = 4;
+    if (unyoNoRow === -1) unyoNoRow = 5;
+
+    const trainNos = lines[trainNoRow] ? lines[trainNoRow].split(',') : [];
+    const unyoNos = lines[unyoNoRow] ? lines[unyoNoRow].split(',') : [];
+    const carsNos = carsRow !== -1 && lines[carsRow] ? lines[carsRow].split(',') : [];
+
+    for (let i = 0; i < trainNos.length; i++) {
+        let tNo = trainNos[i]?.trim();
+        if (!tNo || tNo.includes('列番') || tNo.includes('列車番号') || tNo.includes('運用') || tNo.includes('両数')) continue;
+        
+        let uNo = unyoNos[i]?.trim() || "";
+        let cars = carsNos[i]?.trim() || "";
+        
+        if (uNo.includes('運用') || uNo.includes('仕業') || uNo.includes('運番')) uNo = "";
+        if (cars.includes('両数指定') || cars.includes('両数') || cars.includes('編成')) cars = "";
+
+        csvMapping[tNo] = { unyo: uNo, cars: cars };
+    }
+}
+
+function parseOud2(text) {
+    const lines = text.split(/\r?\n/);
+    globalStations = []; trainTypes = []; trainList = [];
+    let currentTrain = null; let currentSyubetsu = null; let tempStation = null; let mode = "";
+
+    lines.forEach(line => {
+        const t = line.trim();
+        if (t === 'Eki.') { tempStation = { name: "", isMajor: false, tracks: [] }; globalStations.push(tempStation); mode = "EKI"; return; }
+        else if (t === 'Ressyasyubetsu.') { currentSyubetsu = { name: '普通', color: '#000000' }; trainTypes.push(currentSyubetsu); mode = "SYU"; return; }
+        else if (t === 'Ressya.') { currentTrain = { no: '', unyo: '', cars: '', direction: '', syubetsu: null, rawTimes: [], sortTime: '999999' }; trainList.push(currentTrain); mode = "TRAIN"; return; }
+        else if (t === 'Dia.') { mode = "DIA"; return; }
+
+        if (mode === "EKI") {
+            if (t.startsWith('Ekimei=')) tempStation.name = t.split('=')[1];
+            if (t.startsWith('Ekikibo=')) tempStation.isMajor = (t.split('=')[1] === 'Ekikibo_Syuyou');
+            if (t.startsWith('TrackRyakusyou=')) tempStation.tracks.push(t.split('=')[1]);
+        }
+        else if (mode === "SYU") {
+            if (t.startsWith('Syubetsumei=')) currentSyubetsu.name = t.split('=')[1];
+            if (t.startsWith('JikokuhyouMojiColor=')) currentSyubetsu.color = parseColor(t.split('=')[1]);
+        }
+        else if (mode === "TRAIN") {
+            if (t.startsWith('Houkou=')) currentTrain.direction = t.split('=')[1];
+            if (t.startsWith('Ressyabangou=')) {
+                currentTrain.no = t.split('=')[1];
+                if (csvMapping[currentTrain.no]) {
+                    if (csvMapping[currentTrain.no].unyo) currentTrain.unyo = csvMapping[currentTrain.no].unyo;
+                    if (csvMapping[currentTrain.no].cars) currentTrain.cars = csvMapping[currentTrain.no].cars;
+                }
+            }
+            
+            if (t.startsWith('Operation')) {
+                let valIndex = t.indexOf('=');
+                if (valIndex !== -1) {
+                    let val = t.substring(valIndex + 1);
+                    let ops = val.split(',');
+                    ops.forEach(op => {
+                        let match = op.match(/\$\/([^\$]+)$/);
+                        if (match && match[1]) {
+                            if (currentTrain.unyo === '') {
+                                currentTrain.unyo = match[1];
+                            }
+                        }
+                    });
+                }
+            }
+            if (t.startsWith('Unyo=') || t.startsWith('UnYo=')) {
+                if (currentTrain.unyo === '') currentTrain.unyo = t.split('=')[1].trim();
+            }
+
+            if (t.startsWith('Syubetsu=')) {
+                let sIdx = parseInt(t.split('=')[1]);
+                currentTrain.syubetsu = trainTypes[sIdx] || { name: '普通', color: '#000' };
+            }
+            if (t.startsWith('EkiJikoku=')) {
+                const parts = (t.split('=')[1] || "").split(',');
+                currentTrain.rawTimes = parts.map(p => {
+                    if (!p || p.trim() === "") return null;
+                    let tempP = p; let trackIdx = ""; let dollarIdx = tempP.indexOf('$');
+                    if (dollarIdx !== -1) { trackIdx = tempP.substring(dollarIdx + 1); tempP = tempP.substring(0, dollarIdx); }
+                    let stopType = "1", arr = "", dep = "", single = "";
+                    let semiIdx = tempP.indexOf(';');
+                    if (semiIdx !== -1) {
+                        stopType = tempP.substring(0, semiIdx);
+                        let timeStr = tempP.substring(semiIdx + 1);
+                        if (timeStr.includes('/')) { let pts = timeStr.split('/'); arr = pts[0]; dep = pts[1]; }
+                        else { single = timeStr; }
+                    } else { stopType = tempP; }
+                    return { arr, dep, single, trackIdx, isPass: (stopType === '2'), stopType };
+                });
+            }
+        }
+    });
+
+    const N = globalStations.length;
+    trainList.forEach(train => {
+        let startIdx = -1, endIdx = -1;
+        for (let i = 0; i < train.rawTimes.length; i++) {
+            if (train.rawTimes[i]) { if (startIdx === -1) startIdx = i; endIdx = i; }
+        }
+
+        if (startIdx !== -1 && endIdx !== -1) {
+            train.displayRows = [];
+            for (let i = startIdx; i <= endIdx; i++) {
+                let t = train.rawTimes[i];
+                if (!t || t.stopType === '3' || t.stopType === '0') continue;
+
+                let stIndex = train.direction === 'Nobori' ? (N - 1 - i) : i;
+                let stInfo = globalStations[stIndex];
+                if (!stInfo) continue;
+
+                let a = t.arr, d = t.dep;
+                if (t.single !== '') { if (i === endIdx) a = t.single; else d = t.single; }
+                if (i === startIdx) a = ''; if (i === endIdx) d = '';
+                if (train.sortTime === '999999' && (d||a)) train.sortTime = d ? d : a;
+
+                let trackDisp = "";
+                if (t.trackIdx !== "") {
+                    let idx = parseInt(t.trackIdx);
+                    if (!isNaN(idx) && stInfo.tracks && stInfo.tracks.length > idx) {
+                        trackDisp = stInfo.tracks[idx];
+                    }
+                }
+
+                train.displayRows.push({ name: stInfo.name, arr: a, dep: d, track: trackDisp, isMajor: stInfo.isMajor, isPass: t.isPass, remarks: "" });
+            }
+            if (train.displayRows.length > 0) {
+                train.startSt = train.displayRows[0].name;
+                train.finalDest = train.displayRows[train.displayRows.length - 1].name;
+            }
+        }
+    });
+
+    trainList.forEach(t => { t._nextTrain = null; t._isLinkedAsNext = false; });
+    let sortedTrains = [...trainList].sort((a, b) => timeToSec(a.sortTime) - timeToSec(b.sortTime));
+
+    sortedTrains.forEach(t => {
+        if (t._nextTrain) return;
+        let lastRow = t.displayRows[t.displayRows.length - 1];
+        if (!lastRow) return;
+
+        let endSt = lastRow.name;
+        let endTrack = lastRow.track || "";
+        let endTime = timeToSec(lastRow.arr || lastRow.dep);
+        let isRyuchi = endTrack.includes("留");
+
+        let bestCand = null;
+        let minDiff = Infinity;
+
+        sortedTrains.forEach(cand => {
+            if (cand === t || cand._isLinkedAsNext) return;
+            let firstRow = cand.displayRows[0];
+            if (!firstRow) return;
+
+            let startSt = firstRow.name;
+            let startTrack = firstRow.track || "";
+            let startTime = timeToSec(firstRow.dep || firstRow.arr);
+
+            if (isRyuchi) {
+                if (startSt === endSt && cand.direction !== t.direction && startTime >= endTime + 300) {
+                    let diff = startTime - endTime;
+                    if (diff < minDiff) { minDiff = diff; bestCand = cand; }
+                }
+            } else {
+                if (startSt === endSt && startTrack === endTrack && startTime >= endTime) {
+                    let diff = startTime - endTime;
+                    if (diff < minDiff) { minDiff = diff; bestCand = cand; }
+                }
+            }
+        });
+
+        if (bestCand) {
+            t._nextTrain = bestCand;
+            bestCand._isLinkedAsNext = true;
+        }
+    });
+
+    let unyoGroups = [];
+    sortedTrains.forEach(t => {
+        if (!t._isLinkedAsNext) {
+            let currentGroup = [];
+            let curr = t;
+            while (curr) {
+                currentGroup.push(curr);
+                curr = curr._nextTrain;
+            }
+            unyoGroups.push(currentGroup);
+        }
+    });
+
+    let autoUnyoNo = 1;
+    unyoGroups.forEach(group => {
+        let assignedUnyo = "";
+        let assignedCars = ""; 
+        for (let t of group) {
+            if (t.unyo && t.unyo !== '') assignedUnyo = t.unyo;
+            if (t.cars && t.cars !== '') assignedCars = t.cars;
+            if (assignedUnyo !== "" && assignedCars !== "") break;
+        }
+        if (assignedUnyo === "") {
+            assignedUnyo = `自動組番 ${autoUnyoNo}`;
+            autoUnyoNo++;
+        }
+        group.forEach(t => {
+            t.unyo = assignedUnyo;
+            if (t.cars === "" && assignedCars !== "") t.cars = assignedCars; 
+        });
+    });
+
+    trainList.forEach(trainA => {
+        trainA.displayRows.forEach(rowA => {
+            let secA_arr = timeToSec(rowA.arr);
+            let secA_dep = timeToSec(rowA.dep);
+
+            if (secA_arr !== -1 && secA_dep !== -1 && secA_arr < secA_dep) {
+                let overtakenBy = [];
+                let connectsWith = [];
+
+                trainList.forEach(trainB => {
+                    if (trainA.no === trainB.no || trainA.direction !== trainB.direction) return;
+                    let rowB = trainB.displayRows.find(r => r.name === rowA.name);
+                    if (!rowB) return;
+
+                    let secB_arr = timeToSec(rowB.arr);
+                    let secB_dep = timeToSec(rowB.dep);
+                    if (secB_arr === -1 && secB_dep === -1) return;
+                    if (secB_arr === -1) secB_arr = secB_dep;
+                    if (secB_dep === -1) secB_dep = secB_arr;
+
+                    if (secA_arr <= secB_arr && secB_dep <= secA_dep) {
+                        overtakenBy.push(trainB);
+                    } else if (secB_arr <= secA_arr && secA_dep <= secB_dep) {
+                        connectsWith.push(trainB);
+                    }
+                });
+
+                let remarkHTML = "";
+                if (overtakenBy.length > 0) {
+                    overtakenBy.sort((b1, b2) => {
+                        let r1 = b1.displayRows.find(r => r.name === rowA.name);
+                        let r2 = b2.displayRows.find(r => r.name === rowA.name);
+                        return timeToSec(r1.dep || r1.arr) - timeToSec(r2.dep || r2.arr);
+                    });
+                    remarkHTML += overtakenBy.map(b => `<span class="rem-badge" style="color:${b.syubetsu.color}; border-color:${b.syubetsu.color};">${b.syubetsu.name}</span>${b.no}待避`).join('<br>');
+                }
+                if (connectsWith.length > 0) {
+                    connectsWith.sort((b1, b2) => {
+                        let r1 = b1.displayRows.find(r => r.name === rowA.name);
+                        let r2 = b2.displayRows.find(r => r.name === rowA.name);
+                        return timeToSec(r1.dep || r1.arr) - timeToSec(r2.dep || r2.arr);
+                    });
+                    if (remarkHTML !== "") remarkHTML += "<br>";
+                    remarkHTML += connectsWith.map(b => `<span class="rem-badge" style="color:${b.syubetsu.color}; border-color:${b.syubetsu.color};">${b.syubetsu.name}</span>連絡${b.no}`).join('<br>');
+                }
+                rowA.remarks = remarkHTML;
+            }
+        });
+    });
+}
+
+window.acknowledgeNotice = function(tNo) {
+    if (isShirei && currentRoomId) return;
+    if (currentRoomId) {
+        set(ref(db, `sessions/${currentRoomId}/overrides/${tNo}/_GLOBAL_/acknowledged`), true);
+    }
+}
+
+window.saveOverride = function(el) {
+    if (!isShirei || !currentRoomId) return; 
+    let tNo = el.getAttribute('data-train');
+    let stName = el.getAttribute('data-st');
+    let type = el.getAttribute('data-type');
+    let val = el.innerHTML.trim(); 
+    
+    if (stName === '_GLOBAL_' && type === 'notice') {
+        set(ref(db, `sessions/${currentRoomId}/overrides/${tNo}/${stName}/notice`), val);
+        set(ref(db, `sessions/${currentRoomId}/overrides/${tNo}/${stName}/acknowledged`), false);
+    } else {
+        set(ref(db, `sessions/${currentRoomId}/overrides/${tNo}/${stName}/${type}`), val);
+    }
+}
+
+window.clearOverrides = function() {
+    if (!isShirei || !currentRoomId) return;
+    if(confirm("システム上の「手入力変更データ」を初期化し、全端末の画面をリセットします。よろしいですか？")) {
+        set(ref(db, `sessions/${currentRoomId}/overrides`), null);
+    }
+}
+
+function setupUnyoFilter() {
+    const select = document.getElementById('unyoSelect');
+    const valid = trainList.filter(t => t.unyo !== '');
+    const unyos = [...new Set(valid.map(t => t.unyo))].sort((a,b) => {
+        let numA = parseInt(a.replace(/[^0-9]/g, ''));
+        let numB = parseInt(b.replace(/[^0-9]/g, ''));
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+    });
+    
+    select.innerHTML = '<option value="">▼ 展開する仕業を選択</option>' + unyos.map(u => `<option value="${u}">仕業 ${u}</option>`).join('');
+    select.onchange = function() { renderAll(this.value); };
+}
+
+function renderAll(target) {
+    const output = document.getElementById('output'); output.innerHTML = ''; if (!target) return;
+    const viewMode = isShirei ? 'command' : 'crew';
+
+    const filtered = trainList.filter(t => t.unyo === target).sort((a,b) => a.sortTime.localeCompare(b.sortTime));
+    const sheet = document.createElement('div'); sheet.className = 'unyo-sheet';
+    let html = ``;
+    
+    const editableClass = isShirei ? 'editable' : '';
+    const editableAttr = isShirei ? 'contenteditable="true"' : '';
+    const blurEvent = isShirei ? 'onblur="saveOverride(this)"' : '';
+
+    let shouldBeep = false;
+
+    filtered.forEach(train => {
+        let globalNotice = "";
+        let isAck = false;
+        let dispCars = train.cars || "";
+
+        if (appOverrides[train.no] && appOverrides[train.no]['_GLOBAL_']) {
+            if (appOverrides[train.no]['_GLOBAL_'].notice !== undefined) globalNotice = appOverrides[train.no]['_GLOBAL_'].notice;
+            if (appOverrides[train.no]['_GLOBAL_'].acknowledged !== undefined) isAck = appOverrides[train.no]['_GLOBAL_'].acknowledged;
+            if (appOverrides[train.no]['_GLOBAL_'].cars !== undefined) dispCars = appOverrides[train.no]['_GLOBAL_'].cars;
+        }
+
+        if (viewMode === 'crew' && globalNotice !== "" && !isAck) {
+            let noticeHash = globalNotice + "_" + train.no;
+            if (lastAlerted[train.no] !== noticeHash) {
+                shouldBeep = true;
+                lastAlerted[train.no] = noticeHash; 
+            }
+        } else if (globalNotice === "" || isAck) {
+            lastAlerted[train.no] = null;
+        }
+        
+        let trackChanges = []; 
+
+        let rows = train.displayRows.map(r => {
+            let originalTrack = r.track || "";
+            let dispTrack = originalTrack;
+            let dispRem = r.remarks;
+            let isTrackChanged = false;
+            let overrideTrack = null;
+            
+            if (appOverrides[train.no] && appOverrides[train.no][r.name]) {
+                if (appOverrides[train.no][r.name].track !== undefined) overrideTrack = appOverrides[train.no][r.name].track;
+                if (appOverrides[train.no][r.name].remarks !== undefined) dispRem = appOverrides[train.no][r.name].remarks;
+            }
+
+            if (overrideTrack !== null && overrideTrack !== originalTrack) {
+                isTrackChanged = true;
+                dispTrack = overrideTrack;
+            } else {
+                if (viewMode === 'crew' && !r.isMajor) dispTrack = "";
+            }
+            
+            if (isTrackChanged) {
+                trackChanges.push({ st: r.name, old: originalTrack, new: overrideTrack });
+            }
+
+            let trackClass = isTrackChanged ? "changed-track" : "";
+
+            return `
+            <tr>
+                <td class="st-name">${r.name}</td>
+                <td class="track-val ${editableClass} ${trackClass}" ${editableAttr} data-train="${train.no}" data-st="${r.name}" data-type="track" ${blurEvent}>${dispTrack}</td>
+                <td>${fmt(r.arr, r.isPass, viewMode)}</td>
+                <td>${fmt(r.dep, r.isPass, viewMode)}</td>
+                <td class="rem-val ${editableClass}" ${editableAttr} data-train="${train.no}" data-st="${r.name}" data-type="remarks" ${blurEvent}>${dispRem}</td>
+            </tr>`;
+        }).join('');
+        
+        let autoNoticeHtml = "";
+        if (trackChanges.length > 0) {
+            autoNoticeHtml = trackChanges.map(c => {
+                let oldDisp = c.old === "" ? "設定なし" : c.old;
+                return `<div style="margin-bottom: 2px;">${c.st} ${oldDisp} → <span style="color:#e60000; font-weight:bold;">${c.new}</span></div>`;
+            }).join('');
+        }
+
+        let dispTsukoku = "";
+        if (appOverrides[train.no] && appOverrides[train.no]["tsukoku_area"] && appOverrides[train.no]["tsukoku_area"].val !== undefined) {
+            dispTsukoku = appOverrides[train.no]["tsukoku_area"].val;
+        }
+
+        let noticeArea = "";
+        if (globalNotice !== "" || isShirei) {
+            let ackHtml = "";
+            if (globalNotice !== "") {
+                if (isShirei) ackHtml = isAck ? '<span class="ack-label-ok">受領済</span>' : '<span class="ack-label-wait">未受領</span>';
+                else ackHtml = isAck ? '<span class="ack-label-ok">受領済</span>' : `<button class="ack-btn" onclick="acknowledgeNotice('${train.no}')">通告受領</button>`;
+            }
+            noticeArea = `
+            <div class="notice-container" style="border-bottom: 1px solid #000; margin:0; border-top:none; border-left:none; border-right:none;">
+                <span class="notice-label">指令通告</span>
+                <span class="notice-val ${editableClass}" ${editableAttr} data-train="${train.no}" data-st="_GLOBAL_" data-type="notice" ${blurEvent}>${globalNotice}</span>
+                ${ackHtml}
+            </div>
+            `;
+        }
+
+        // ▼▼ スタフ専用 新レイアウトの組み込み ▼▼
+        let carsHtml = `
+            <div style="display:flex; align-items:center; font-size:12px; color:#333;">
+                両数: <span class="${editableClass}" ${editableAttr} data-train="${train.no}" data-st="_GLOBAL_" data-type="cars" ${blurEvent} style="display:inline-block; min-width:30px; text-align:center; border-bottom:1px solid #999; margin: 0 4px; color:#000;">${dispCars}</span> 両
+            </div>
+        `;
+
+        html += `
+            <div class="train-block">
+                <div class="train-header">
+                    <span class="train-no">${train.no}</span>
+                    <div class="syubetsu-box" style="color:${train.syubetsu.color};border-color:${train.syubetsu.color}">${train.syubetsu.name}</div>
+                </div>
+                <div class="route-info">
+                    <span class="route-dest">${train.finalDest} 行</span>
+                    <span class="route-cars">${carsHtml}</span>
+                </div>
+                
+                ${noticeArea}
+
+                <table class="staf-table">
+                    <colgroup>
+                        <col class="col-st"><col class="col-track">
+                        <col class="col-time"><col class="col-time"><col class="col-rem">
+                    </colgroup>
+                    <tr><th>駅名</th><th>番</th><th>着</th><th>発</th><th>記事</th></tr>
+                    ${rows}
+                    <tr>
+                        <td colspan="5" style="padding: 0; border: 1px solid #222;">
+                            <div style="display: flex; flex-direction: column; height: 100%;">
+                                <div style="background: #eee; border-bottom: 1px solid #aaa; font-size: 11px; padding: 2px 6px; font-weight: bold; color: #111;">通告・記事</div>
+                                <div style="flex-grow: 1; min-height: 28px; padding: 4px; font-size: 12px; text-align: left; display: flex; flex-direction: column;">
+                                    ${autoNoticeHtml}
+                                    <div class="${editableClass}" ${editableAttr} data-train="${train.no}" data-st="tsukoku_area" data-type="val" ${blurEvent} style="flex-grow: 1; outline: none; min-height: 14px;">${dispTsukoku}</div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        `;
+    });
+    output.appendChild(sheet); sheet.innerHTML = html;
+
+    if (shouldBeep) {
+        playBeep();
+    }
+}
+
+function fmt(t, isPass, mode) {
+    if (!t) return isPass ? '<span class="pass-mark">レ</span>' : '';
+    if (isPass && mode === 'crew') return '<span class="pass-mark">レ</span>';
+    
+    let h = t.length <= 4 ? t.slice(0,-2) : t.slice(0,-4);
+    let m = t.length <= 4 ? t.slice(-2) : t.slice(-4,-2);
+    let s = t.length <= 4 ? '00' : t.slice(-2);
+    if (!h) h = '0';
+    
+    let timeHtml = `<div class="time-wrap"><span class="time-h">${h}</span><span class="time-m">${m}</span><span class="time-s">${s}</span></div>`;
+    
+    if (isPass && mode === 'command') {
+        return `<div style="display:flex; align-items:center; justify-content:center;"><span class="pass-mark" style="font-size:14px; margin-right:4px;">レ</span>${timeHtml}</div>`;
+    }
+    return timeHtml;
+}
+</script>
+</body>
+</html>
